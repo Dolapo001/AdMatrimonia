@@ -40,14 +40,24 @@ DJANGO_APPS = [
     'django.contrib.staticfiles',
 ]
 
-THIRD_PARTY_APPS = [
+LOCAL_APPS = [
     'core.apps.CoreConfig',
     'ads.apps.AdsConfig',
     'common.apps.CommonConfig',
     'matrimonial.apps.MatrimonialConfig',
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS
+THIRD_PARTY_APPS = [
+    'rest_framework',
+    "drf_spectacular",
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'mailer',
+    'django_celery_beat',
+    'celery',
+]
+
+INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
 
 
 MIDDLEWARE = [

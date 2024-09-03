@@ -1,7 +1,7 @@
 import random
 from django.utils import timezone
 from datetime import timedelta
-from .models import OTP
+#from core.models import OTP
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings

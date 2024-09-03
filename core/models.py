@@ -8,8 +8,7 @@ from .managers import CustomUserManager
 
 
 class User(BaseModel, CustomUserManager):
-    first_name = models.CharField(null=True, max_length=225)
-    last_name = models.CharField(null=True, max_length=255)
+    name = models.CharField(null=True, max_length=225)
     email = models.EmailField(unique=True, validators=[validate_email_format], null=True)
     country = models.CharField(max_length=20, null=True)
     phone_number = models.CharField(unique=True, null=True, max_length=15, validators=[validate_phone_number])

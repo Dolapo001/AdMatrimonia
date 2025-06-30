@@ -1,1 +1,2 @@
 Django~=5.1
+djangorestframework~=3.16.0

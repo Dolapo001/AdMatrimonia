@@ -1,8 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils import timezone
-from core.emails import verify_otp
-from core.models import User
+#from core.emails import verify_otp
 
 
 def validate_email_format(value):
@@ -12,10 +11,10 @@ def validate_email_format(value):
         raise ValidationError("Invalid email format")
 
 
-def validate_otp(user, otp_code):
-    if not verify_otp(user, otp_code):
-        raise ValidationError("Invalid or expired OTP")
-    return True
+# def validate_otp(user, otp_code):
+#     if not verify_otp(user, otp_code):
+#         raise ValidationError("Invalid or expired OTP")
+#     return True
 
 
 def validate_phone_number(value):

@@ -10,8 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
+from datetime import timedelta
 from pathlib import Path
 from .jazzmin import JAZZMIN_SETTINGS
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +24,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f*l++o@k)#=ncf7r)bm93(v1=jc7n%+6was*v30(edn6^n0$3*'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+load_dotenv()
 
-ALLOWED_HOSTS = []
+DEBUG = os.getenv("DEBUG") == "True"
+# ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS")
+ALLOWED_HOSTS = ["*"]
+
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 
 # Application definition
@@ -55,11 +61,51 @@ THIRD_PARTY_APPS = [
     'mailer',
     'django_celery_beat',
     'celery',
+
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
 
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=50),  # Adjust as needed
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),  # Adjust as needed
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,  # Use your Django secret key or a separate JWT secret
+    # Custom token claims and authentication settings
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    # Token blacklist settings (if using blacklisting feature)
+    "BLACKLIST_ENABLED": True,
+    "JTI_CLAIM": "jti",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AdMatrimonia",
+    "DESCRIPTION": """
+    🚀 
+    """,
+    "VERSION": "1.0.0",
+    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "DISABLE_ERRORS_AND_WARNINGS": True,
+}
+
 AUTH_USER_MODEL = 'core.User'
+LOGOUT_REDIRECT_URL = "/login/"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

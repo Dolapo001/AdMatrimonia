@@ -1,13 +1,11 @@
-from datetime import timedelta
-from django.utils import timezone
-from common.models import BaseModel
-from django.db import models
 from django.contrib.auth.models import AbstractUser
-from common.validators import validate_email_format, validate_phone_number
+from django.db import models
+from common.models import BaseModel
+from common.validators import *
 from .managers import CustomUserManager
 
 
-class User(BaseModel, CustomUserManager):
+class User(AbstractUser, BaseModel):
     name = models.CharField(null=True, max_length=225)
     email = models.EmailField(unique=True, validators=[validate_email_format], null=True)
     country = models.CharField(max_length=20, null=True)
@@ -17,12 +15,15 @@ class User(BaseModel, CustomUserManager):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'phone_number']
 
+    objects = CustomUserManager()
+
     class Meta:
         unique_together = ('email', 'phone_number')
 
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
+
 
 
 class OTP(BaseModel):

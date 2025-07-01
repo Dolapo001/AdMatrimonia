@@ -6,20 +6,21 @@ from .models import User
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
-    model = User
-    fields = ['name', 'email', 'phone_number', 'password']
+    class Meta:
+        model = User
+        fields = ['name', 'email', 'phone_number', 'password']
 
-    def validate_email(self, value):
-        if not value:
-            raise serializers.ValidationError("Email is required")
-        return value
+        def validate_email(self, value):
+            if not value:
+                raise serializers.ValidationError("Email is required")
+            return value
 
-    def create(self, validated_data):
-        # Create the user with proper password handling using the custom manager
-        user = User.objects.create_user(
-            email=validated_data["email"], password=validated_data["password"]
-        )
-        return user
+        def create(self, validated_data):
+            # Create the user with proper password handling using the custom manager
+            user = User.objects.create_user(
+                email=validated_data["email"], password=validated_data["password"]
+            )
+            return user
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -47,3 +48,5 @@ class UserLoginSerializer(serializers.Serializer):
 
         data["user"] = user
         return data
+
+

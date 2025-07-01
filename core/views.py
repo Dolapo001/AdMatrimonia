@@ -7,7 +7,9 @@ from django.db import transaction
 from common.utils import get_serializer_error_as_string
 import logging
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -45,3 +47,37 @@ class RegistrationView(APIView):
                 {"message": f"Internal Server Error: {str(e)}", "data": None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class LoginView(APIView):
+    serializer_class = UserLoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                user = serializer.validated_data.get("user")
+
+                if not user:
+                    return Response(
+                        {"message": "User not found."}, status=status.HTTP_404_NOT_FOUND
+                    )
+
+                refresh = RefreshToken.for_user(user)
+                access = (
+                    refresh.access_token
+                )
+
+                tokens = {"refresh": str(refresh), "access": str(access)}
+                return Response(tokens, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error occurred during login: {e}")
+            return Response(
+                {"message": "Internal Server Error", "data": None},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+

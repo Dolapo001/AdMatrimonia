@@ -119,6 +119,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'AdMatrimonia.urls'
 
+AUTHENTICATION_BACKENDS = [
+    "core.auth_backends.EmailAuthBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

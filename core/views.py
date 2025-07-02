@@ -1,3 +1,4 @@
+from jsonschema.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -54,30 +55,25 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        serializer = self.serializer_class(data=request.data, context={"request": request})
+
         try:
-            serializer = self.serializer_class(data=request.data)
-            if serializer.is_valid():
-                user = serializer.validated_data.get("user")
+            serializer.is_valid(raise_exception=True)
+        except ValidationError:
+            raise  # Let DRF handle this properly
 
-                if not user:
-                    return Response(
-                        {"message": "User not found."}, status=status.HTTP_404_NOT_FOUND
-                    )
+        try:
+            user = serializer.validated_data["user"]
+            refresh = RefreshToken.for_user(user)
+            access = refresh.access_token
 
-                refresh = RefreshToken.for_user(user)
-                access = (
-                    refresh.access_token
-                )
-
-                tokens = {"refresh": str(refresh), "access": str(access)}
-                return Response(tokens, status=status.HTTP_200_OK)
-
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(
+                {"refresh": str(refresh), "access": str(access)},
+                status=status.HTTP_200_OK
+            )
         except Exception as e:
-            logger.error(f"Error occurred during login: {e}")
+            logger.error(f"Unexpected error during login: {e}", exc_info=True)
             return Response(
                 {"message": "Internal Server Error", "data": None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-

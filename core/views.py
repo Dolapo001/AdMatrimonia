@@ -77,4 +77,5 @@ class LoginView(APIView):
                 {"message": "Internal Server Error", "data": None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        #uh hi i am sick cant do much but i still have to commit and push
+        # uh hi i am sick cant do much but i still have to commit and push
+        # still sick

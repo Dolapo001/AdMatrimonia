@@ -186,3 +186,10 @@ ALL_SUBCATEGORIES = (
         JOBS_SUBCATEGORIES + LIFESTYLE_SUBCATEGORIES + TRAVEL_SUBCATEGORIES +
         WEDDING_SUBCATEGORIES
 )
+
+Ad_Status = [
+        ('active', 'Active'),
+        ('pending', 'Pending'),
+        ('expired', 'Expired'),
+        ('sold', 'Sold'),
+]

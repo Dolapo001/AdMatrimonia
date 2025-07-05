@@ -193,3 +193,22 @@ Ad_Status = [
         ('expired', 'Expired'),
         ('sold', 'Sold'),
 ]
+
+
+CATEGORY_CODE_MAP = {
+    'matrimony': 'MAT',
+    'events': 'EVN',
+    'entertainment': 'ENT',
+    'services': 'SRV',
+    'property': 'PRP',
+    'automotive': 'AUT',
+    'items': 'ITM',
+    'jobs': 'JOB',
+    'shops': 'SHP',
+    'lifestyle': 'LIF',
+    'travel': 'TRV',
+    'announcements': 'ANN',
+    'help': 'HLP',
+    'news': 'NWS',
+    'wedding': 'WED',
+}

@@ -26,6 +26,6 @@ class AdSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'price', 'currency',
             'location', 'contact_phone', 'contact_email', 'images',
             'status', 'is_featured', 'is_sold', 'is_expired',
-            'created_at', 'updated_at', 'expires_at', 'public_id',
+            'created_at', 'updated_at', 'expires_at', 'publik_id',
             'category', 'subcategory'
         ]

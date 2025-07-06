@@ -24,6 +24,7 @@ from drf_spectacular.views import (
 
 urlpatterns_v1 = [
     path("user/", include("core.urls")),
+    path("ads/", include("ads.urls")),
     # path("", include("")),
 ]
 

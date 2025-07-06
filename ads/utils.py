@@ -1,6 +1,6 @@
 from random import random
 from ads.constants import CATEGORY_CODE_MAP
-from ads.models import Ad
+from ads.models import *
 
 
 def generate_unique_public_id(category_slug):

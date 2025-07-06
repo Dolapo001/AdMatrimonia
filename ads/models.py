@@ -60,7 +60,7 @@ class Ad(BaseModel):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
-    public_id = models.CharField(max_length=20, unique=True, blank=True)
+    publik_id = models.CharField(max_length=20, unique=True, blank=True)
 
 
     class Meta:
@@ -82,12 +82,12 @@ class Ad(BaseModel):
 
     def save(self, *args, **kwargs):
         # Generate public_id only on creation
-        if not self.public_id:
+        if not self.publik_id:
             if hasattr(self.category, 'slug'):
                 category_slug = self.category.slug
             else:
                 category_slug = slugify(str(self.category))
-            self.public_id = generate_unique_public_id(category_slug)
+            self.publik_id = generate_unique_public_id(category_slug)
 
         # Default expire in 30 days if not provided
         if not self.expires_at:

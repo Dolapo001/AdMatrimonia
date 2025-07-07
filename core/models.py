@@ -27,7 +27,6 @@ class User(AbstractUser, BaseModel):
         return f"{self.first_name} {self.last_name}".strip()
 
 
-
 class OTP(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otp')
     code = models.PositiveIntegerField(null=True, max_length=4)

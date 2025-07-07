@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from common.models import BaseModel
 from core.models import User
 from .constants import *
+from .managers import *
 from .utils import generate_unique_public_id
 
 
@@ -16,6 +17,7 @@ class Category(BaseModel):
     color = models.CharField(max_length=7, default='#000000') #might remove
     is_active = models.BooleanField(default=True)
     order = models.IntegerField(default=0)
+    objects = CategoryManager()
 
     class Meta:
         ordering = ['order', 'display_name']
@@ -32,6 +34,7 @@ class SubCategory(BaseModel):
     is_active = models.BooleanField(default=True)
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
+    objects = SubCategoryManager()
 
     class Meta:
         ordering = ['order', 'display_name']
@@ -61,6 +64,7 @@ class Ad(BaseModel):
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     publik_id = models.CharField(max_length=20, unique=True, blank=True)
+    objects = AdManager()
 
 
     class Meta:
@@ -101,6 +105,7 @@ class FavoriteAd(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorite_ads')
     ad = models.ForeignKey(Ad, on_delete=models.CASCADE, related_name='favorited_by')
     created_at = models.DateTimeField(auto_now_add=True)
+    objects = FavoriteAdManager()
 
     class Meta:
         unique_together = ['user', 'ad']

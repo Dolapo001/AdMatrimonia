@@ -148,3 +148,31 @@ class UserAdsView(APIView):
 
 
 class FavoriteAdsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        favorites = FavoriteAd.objects.for_user(request.user)
+        serializer = FavoriteAdSerializer(favorites, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AddToFavoriteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, ad_id):
+        ad = get_object_or_404(Ad, id=ad_id)
+        favorite, created = FavoriteAd.objects.get_or_create(user=request.user, ad=ad)
+        if created:
+            return Response({'message': 'Ad added to favorites.'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Already in favorites.'}, status=status.HTTP_200_OK)
+
+
+class RemoveFromFavoriteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, ad_id):
+        favorite = FavoriteAd.objects.filter(user=request.user, ad__id=ad_id).first()
+        if favorite:
+            favorite.delete()
+            return Response({'message': 'Ad removed from favorites.'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'error': 'Favorite not found.'}, status=status.HTTP_404_NOT_FOUND)

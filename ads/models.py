@@ -112,3 +112,12 @@ class FavoriteAd(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.ad.title}"
+
+
+class SearchHistory(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    query = models.CharField(max_length=255)
+    searched_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-searched_at']

@@ -8,24 +8,24 @@ from common.utils import get_serializer_error_as_string
 import logging
 from rest_framework.permissions import IsAuthenticated
 from .models import *
-
+from django.db.models import Q
+from common.utils import paginate_and_filter_queryset
 logger = logging.getLogger(__name__)
 
 
 class GetCategoryList(APIView):
     serializer_class = CategorySerializer
 
-    #permission_classes = [IsAuthenticated]
-
     def get(self, request):
         try:
             categories = Category.objects.active()
-            serializer = self.serializer_class(categories, many=True)
-            return Response({
-                "status": True,
-                "message": "Categories fetched successfully.",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            return paginate_and_filter_queryset(
+                request,
+                categories,
+                self.serializer_class,
+                search_fields=['name', 'display_name'],
+                ordering_fields=['order', 'name']
+            )
         except Exception as e:
             logger.error(f"Error fetching category list: {e}")
             return Response({
@@ -38,22 +38,21 @@ class GetCategoryList(APIView):
 class GetSubCategoryList(APIView):
     serializer_class = SubCategorySerializer
 
-    #permission_classes = [IsAuthenticated]
-
     def get(self, request):
         try:
             sub_categories = SubCategory.objects.active()
-            serializer = self.serializer_class(sub_categories, many=True)
-            return Response({
-                "status": True,
-                "message": "Sub Categories fetched successfully.",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            return paginate_and_filter_queryset(
+                request,
+                sub_categories,
+                self.serializer_class,
+                search_fields=['name', 'display_name', 'category__name'],
+                ordering_fields=['order', 'name']
+            )
         except Exception as e:
-            logger.error(f"Error fetching  sub category list: {e}")
+            logger.error(f"Error fetching subcategory list: {e}")
             return Response({
                 "status": False,
-                "message": "An error occurred while fetching sub categories.",
+                "message": "An error occurred while fetching subcategories.",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -89,16 +88,30 @@ class ListAdsView(APIView):
     def get(self, request):
         try:
             ads = Ad.objects.active().order_recent()
-            serializer = AdListSerializer(ads, many=True)
-            return Response({
-                "status": True,
-                'ads': serializer.data
-            }, status=status.HTTP_200_OK)
+
+            # Filter by location
+            location = request.query_params.get('location')
+            if location:
+                ads = ads.filter(location__icontains=location)
+
+            # Save search history if authenticated
+            if request.user.is_authenticated:
+                query = request.query_params.get('search')
+                if query:
+                    SearchHistory.objects.create(user=request.user, query=query)
+
+            return paginate_and_filter_queryset(
+                request,
+                ads,
+                self.serializer_class,
+                search_fields=['title', 'description', 'location'],
+                ordering_fields=['created_at', 'price']
+            )
         except Exception as e:
-            logger.error(f"Error while fetching list of ads: {e}")
+            logger.error(f"Error while fetching ads: {e}")
             return Response({
                 "status": False,
-                "message": "An error occurred fetching list of ads.",
+                "message": "An error occurred fetching ads.",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -208,5 +221,51 @@ class RemoveFromFavoriteView(APIView):
             return Response({
                 "status": False,
                 "message": "An error occurred while removing from favorites.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class FilteredAdListView(APIView):
+    serializer_class = AdListSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        queryset = Ad.objects.active().order_recent()
+
+        # Search
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(description__icontains=search) |
+                Q(location__icontains=search)
+            )
+
+        # Sort by
+        sort_by = self.request.query_params.get('sort_by')
+        if sort_by in ['price', '-price', 'created_at', '-created_at']:
+            queryset = queryset.order_by(sort_by)
+
+        # Filter by location
+        location = self.request.query_params.get('location')
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        return queryset
+
+
+class UserSearchHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            history = SearchHistory.objects.filter(user=request.user)
+            data = [{"query": h.query, "searched_at": h.searched_at} for h in history]
+            return Response({"status": True, "history": data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error fetching search history: {e}")
+            return Response({
+                "status": False,
+                "message": "Failed to fetch search history",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

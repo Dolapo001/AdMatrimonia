@@ -133,7 +133,7 @@ class UserAdsView(APIView):
     def get(self, request):
         try:
             user_ads = Ad.objects.for_user(request.user).order_recent()
-            serializer = UserAdListSerializer(user_ads, many=True)
+            serializer = self.serializer_class(user_ads, many=True)
             return Response({
                 "status": True,
                 'user_ads': serializer.data
@@ -149,30 +149,64 @@ class UserAdsView(APIView):
 
 class FavoriteAdsView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = FavoriteAdSerializer
 
     def get(self, request):
-        favorites = FavoriteAd.objects.for_user(request.user)
-        serializer = FavoriteAdSerializer(favorites, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            favorites = FavoriteAd.objects.for_user(request.user)
+            serializer = self.serializer_class(favorites, many=True)
+            return Response({
+                "status": True,
+                "favourites":  serializer.data},
+                status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error while fetching list of favourite ads: {e}")
+            return Response({
+                "status": False,
+                "message": "An error occurred fetching list of favourite ads.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AddToFavoriteView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, ad_id):
-        ad = get_object_or_404(Ad, id=ad_id)
-        favorite, created = FavoriteAd.objects.get_or_create(user=request.user, ad=ad)
-        if created:
-            return Response({'message': 'Ad added to favorites.'}, status=status.HTTP_201_CREATED)
-        return Response({'message': 'Already in favorites.'}, status=status.HTTP_200_OK)
+        try:
+            ad = Ad.objects.active().get(id=ad_id)  # Use your custom manager if you have one
+        except Ad.DoesNotExist:
+            return Response(
+                {"message": "Ad not found or is no longer active."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        try:
+            favorite, created = FavoriteAd.objects.get_or_create(user=request.user, ad=ad)
+            if created:
+                return Response({'message': 'Ad added to favorites.'}, status=status.HTTP_201_CREATED)
+            return Response({'message': 'Already in favorites.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error while adding to favorites: {e}")
+            return Response({
+                "status": False,
+                "message": "An error occurred while adding to favorites.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RemoveFromFavoriteView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, ad_id):
-        favorite = FavoriteAd.objects.filter(user=request.user, ad__id=ad_id).first()
-        if favorite:
-            favorite.delete()
-            return Response({'message': 'Ad removed from favorites.'}, status=status.HTTP_204_NO_CONTENT)
-        return Response({'error': 'Favorite not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            favorite = FavoriteAd.objects.for_user(request.user).filter(ad__id=ad_id).first()
+            if favorite:
+                favorite.delete()
+                return Response({'message': 'Ad removed from favorites.'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'error': 'Favorite not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error while removing from favorites: {e}")
+            return Response({
+                "status": False,
+                "message": "An error occurred while removing from favorites.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

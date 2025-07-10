@@ -70,3 +70,6 @@ class ConnectionRequest(BaseModel):
 class Bookmark(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
     profile = models.ForeignKey(MatrimonyProfile, on_delete=models.CASCADE, related_name='bookmarked_by')
+
+
+#i have been busy with flutter i almost forgot

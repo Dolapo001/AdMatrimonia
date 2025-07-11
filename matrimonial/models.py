@@ -1,6 +1,7 @@
 from django.db import models
 from common.models import BaseModel
 from core.models import User
+from matrimonial.managers import MatrimonyProfileManager
 
 gender_choice = [
     ('female', 'Female'),
@@ -21,6 +22,7 @@ class MatrimonyProfile(BaseModel):
     income = models.CharField(max_length=20, null=True, blank=True),
     bio = models.TextField(null=True, blank=True)
     expectations = models.CharField(max_length=250, null=True, blank=True),
+    objects = MatrimonyProfileManager()
 
     def __str__(self):
         return f"{self.user.name} Matrimony Profile"

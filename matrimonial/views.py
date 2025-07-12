@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class GetProfileVIew(APIView):
+class GetProfileView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = MatrimonyProfileSerializer
 
@@ -98,4 +98,27 @@ class UpdateProfileView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class Delete
+class DeleteProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
+            if profile:
+                profile.delete()
+                return Response({
+                    "status": True,
+                    "message": "User profile deleted successfully",
+                }, status=status.HTTP_204_NO_CONTENT)
+            return Response({
+                "status": False,
+                "message": "User profile not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error deleting user's profile: {e}")
+            return Response({
+                "status": False,
+                "message": "An error occurred while deleting user's profile.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

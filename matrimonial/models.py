@@ -23,6 +23,7 @@ class MatrimonyProfile(BaseModel):
     bio = models.TextField(null=True, blank=True)
     expectations = models.CharField(max_length=250, null=True, blank=True),
     objects = MatrimonyProfileManager()
+    is_bookmarked = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.name} Matrimony Profile"
@@ -31,6 +32,7 @@ class MatrimonyProfile(BaseModel):
 class MatrimonyProfilePicture(BaseModel):
     profile = models.ForeignKey(MatrimonyProfile, on_delete=models.CASCADE, related_name='pictures')
     image = models.ImageField(upload_to='matrimony/profile_pics/')
+    objects = MatrimonyProfileManager()
 
     def __str__(self):
         return f"Picture of {self.profile.user.name}"

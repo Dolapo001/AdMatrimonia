@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .models import MatrimonyProfile
 from .serializers import MatrimonyProfileSerializer
+from rest_framework.pagination import PageNumberPagination
 import logging
 
 logger = logging.getLogger(__name__)
@@ -121,4 +122,36 @@ class DeleteProfileView(APIView):
                 "message": "An error occurred while deleting user's profile.",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MatrimonyProfileListView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MatrimonyProfileSerializer
+
+    def get(self, request):
+        try:
+            filters = request.query_params
+            queryset = MatrimonyProfile.objects.list_profiles(filters)
+
+            paginator = PageNumberPagination()
+            paginator.page_size = 10
+            result_page = paginator.paginate_queryset(queryset, request)
+            serializer = self.serializer_class(result_page, many=True)
+
+            return paginator.get_paginated_response({
+                "status": True,
+                "message": "Profiles fetched successfully",
+                "data": serializer.data
+            })
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "Error occurred while listing profiles.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MatrimonyProfileDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MatrimonyProfileSerializer
 

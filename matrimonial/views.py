@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from .models import MatrimonyProfile
-from .serializers import MatrimonyProfileSerializer
+from .models import *
+from .serializers import *
 from rest_framework.pagination import PageNumberPagination
 import logging
 
@@ -153,5 +153,123 @@ class MatrimonyProfileListView(APIView):
 
 class MatrimonyProfileDetailView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = MatrimonyProfileSerializer
+
+    def get(self, request, user_id):
+        try:
+            profile = MatrimonyProfile.objects.get_by_user_id(user_id)
+            if not profile:
+                return Response({
+                    "status": False,
+                    "message": "Profile not found"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = MatrimonyProfileSerializer(profile)
+            return Response({
+                "status": True,
+                "message": "Profile fetched successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "An error occurred while fetching profile",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MatrimonyProfilePicturesView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MatrimonyProfilePictureSerializer
+
+    def get(self, request, user_id):
+        try:
+            profile = MatrimonyProfile.objects.get_by_user_id(user_id)
+            if not profile:
+                return Response({
+                    "status": False,
+                    "message": "Profile not found"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            pictures = profile.pictures.all()
+            serializer = self.serializer_class(pictures, many=True)
+            return Response({
+                "status": True,
+                "message": "Pictures fetched successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "An error occurred while fetching pictures",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UploadProfilePictureView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MatrimonyProfilePictureSerializer
+
+    def post(self, request):
+        try:
+            profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
+            if not profile:
+                return Response({
+                    "status": False,
+                    "message": "User profile not found"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            image = request.FILES.get('image')
+            if not image:
+                return Response({
+                    "status": False,
+                    "message": "Image is required"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            picture = profile.pictures.create(image=image)
+            serializer = self.serializer_class(picture)
+            return Response({
+                "status": True,
+                "message": "Picture uploaded successfully",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "An error occurred while uploading picture",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeleteProfilePictureView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, picture_id):
+        try:
+            picture = MatrimonyProfilePicture.objects.filter(
+                id=picture_id,
+                profile__user=request.user
+            ).first()
+
+            if not picture:
+                return Response({
+                    "status": False,
+                    "message": "Picture not found or unauthorized"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            picture.delete()
+            return Response({
+                "status": True,
+                "message": "Picture deleted successfully"
+            }, status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "An error occurred while deleting picture",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 

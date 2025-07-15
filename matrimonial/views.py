@@ -273,3 +273,19 @@ class DeleteProfilePictureView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class GetPreferenceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            preference = request.user.partner_preference
+            serializer = PartnerPreferenceSerializer(preference)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except PartnerPreference.DoesNotExist:
+            return Response({"detail": "Preferences not set yet."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "message": "An error occurred while deleting picture",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

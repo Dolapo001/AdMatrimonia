@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import MatrimonyProfile, MatrimonyProfilePicture
+from .models import *
 
 
 class MatrimonyProfilePictureSerializer(serializers.ModelSerializer):
@@ -28,3 +28,9 @@ class MatrimonyProfileDetailSerializer(serializers.ModelSerializer):
             'address',
             'profession'
         )
+
+
+class PartnerPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerPreference
+        fields = ['min_age', 'max_age', 'min_height', 'max_height', 'caste', 'education']

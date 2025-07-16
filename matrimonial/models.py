@@ -1,7 +1,7 @@
 from django.db import models
 from common.models import BaseModel
 from core.models import User
-from matrimonial.managers import MatrimonyProfileManager
+from matrimonial.managers import MatrimonyProfileManager, PartnerPreferenceManager
 
 gender_choice = [
     ('female', 'Female'),
@@ -48,6 +48,7 @@ class PartnerPreference(BaseModel):
 
     caste = models.CharField(max_length=50, null=True, blank=True)
     education = models.JSONField(null=True, blank=True)
+    objects = PartnerPreferenceManager()
 
     def __str__(self):
         return f"Partner Preferences of {self.user.name}"

@@ -44,3 +44,16 @@ class MatrimonyProfileManager(models.Manager):
         if filters:
             qs = qs.apply_filters(filters)
         return qs
+
+
+class PartnerPreferenceQuerySet(models.QuerySet):
+    def for_user(self, user):
+        return self.filter(user=user).first()
+
+
+class PartnerPreferenceManager(models.Manager):
+    def get_queryset(self):
+        return PartnerPreferenceQuerySet(self.model, using=self._db)
+
+    def get_for_user(self, user):
+        return self.get_queryset().for_user(user)

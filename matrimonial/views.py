@@ -275,17 +275,101 @@ class DeleteProfilePictureView(APIView):
 
 class GetPreferenceView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = PartnerPreferenceSerializer
 
     def get(self, request):
         try:
-            preference = request.user.partner_preference
-            serializer = PartnerPreferenceSerializer(preference)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except PartnerPreference.DoesNotExist:
-            return Response({"detail": "Preferences not set yet."}, status=status.HTTP_404_NOT_FOUND)
+            preference = PartnerPreference.objects.get_for_user(request.user)
+            if not preference:
+                return Response({
+                    "status": False,
+                    "message": "Partner preferences not set yet"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = self.serializer_class(preference)
+            return Response({
+                "status": True,
+                "message": "Partner preferences fetched successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
         except Exception as e:
+            logger.error(f"Error fetching partner preferences: {e}")
             return Response({
                 "status": False,
-                "message": "An error occurred while deleting picture",
+                "message": "An error occurred while fetching preferences",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SetPreferenceView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PartnerPreferenceSerializer
+
+    def post(self, request):
+        try:
+            if PartnerPreference.objects.get_for_user(request.user):
+                return Response({
+                    "status": False,
+                    "message": "Preferences already exist. Use update instead"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                serializer.save(user=request.user)
+                return Response({
+                    "status": True,
+                    "message": "Partner preferences created successfully",
+                    "data": serializer.data
+                }, status=status.HTTP_201_CREATED)
+
+            return Response({
+                "status": False,
+                "message": "Validation failed",
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error creating partner preferences: {e}")
+            return Response({
+                "status": False,
+                "message": "An error occurred while creating preferences",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UpdatePreferenceView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PartnerPreferenceSerializer
+
+    def put(self, request):
+        try:
+            preference = PartnerPreference.objects.get_for_user(request.user)
+            if not preference:
+                return Response({
+                    "status": False,
+                    "message": "Preferences not found. Use create instead"
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = self.serializer_class(preference, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "status": True,
+                    "message": "Partner preferences updated successfully",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
+
+            return Response({
+                "status": False,
+                "message": "Validation failed",
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error updating partner preferences: {e}")
+            return Response({
+                "status": False,
+                "message": "An error occurred while updating preferences",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

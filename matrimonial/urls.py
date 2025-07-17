@@ -14,7 +14,15 @@ urlpatterns = [
     path('profile/pictures/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
     path('profile/pictures/<str:picture_id>/', DeleteProfilePictureView.as_view(), name='delete_profile_picture'),
 
-    path('preferences/', GetPreferenceView.as_view(), name='get_partner_preferences'),       # GET
-    path('preferences/create/', SetPreferenceView.as_view(), name='create_partner_preferences'),  # POST
-    path('preferences/update/', UpdatePreferenceView.as_view(), name='update_partner_preferences'),  # PUT
+    path('preferences/', GetPreferenceView.as_view(), name='get_partner_preferences'),
+    path('preferences/create/', SetPreferenceView.as_view(), name='create_partner_preferences'),
+    path('preferences/update/', UpdatePreferenceView.as_view(), name='update_partner_preferences'),
+
+    path("connections/send/", SendConnectionView.as_view(), name="send-connection-request"),
+    path("connections/received/", ReceivedConnectionView.as_view(), name="received-connection-requests"),
+    path("connections/sent/", SentConnectionView.as_view(), name="sent-connection-requests"),
+    path("connections/respond/", RespondConnectionsView.as_view(), name="respond-connection-request"),
+
+    path("bookmarks/", BookmarkListView.as_view(), name="bookmark-list"),
+    path("bookmarks/toggle/", BookmarkToggleView.as_view(), name="bookmark-toggle"),
 ]

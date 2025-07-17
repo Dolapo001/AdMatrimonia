@@ -320,7 +320,7 @@ class ReceivedConnectionView(APIView):
             return ResponseManager.handle_exception(e, "fetching received connections")
 
 
-class SentConnectionViews(APIView):
+class SentConnectionView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ConnectionRequestSerializer
 

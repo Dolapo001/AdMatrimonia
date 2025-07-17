@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from common.models import BaseModel
 from core.models import User
 from .constants import *
-from .managers import *
+from .query_managers import *
 from .utils import generate_unique_public_id
 
 

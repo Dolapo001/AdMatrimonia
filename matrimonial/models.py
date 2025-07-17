@@ -1,7 +1,7 @@
 from django.db import models
 from common.models import BaseModel
 from core.models import User
-from matrimonial.managers import *
+from matrimonial.query_managers import *
 
 gender_choice = [
     ('female', 'Female'),

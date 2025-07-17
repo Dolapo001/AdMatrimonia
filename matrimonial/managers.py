@@ -57,3 +57,42 @@ class PartnerPreferenceManager(models.Manager):
 
     def get_for_user(self, user):
         return self.get_queryset().for_user(user)
+
+
+class ConnectionRequestManager(models.Manager):
+    def send(self, sender, receiver, message=None):
+        if sender == receiver:
+            raise ValueError("You cannot send a request to yourself")
+
+        obj, created = self.get_or_create(
+            sender=sender,
+            receiver=receiver,
+            defaults={'message': message}
+        )
+        return obj, created
+
+    def get_received(self, user):
+        return self.filter(receiver=user, status='pending')
+
+    def get_sent(self, user):
+        return self.filter(sender=user)
+
+    def respond(self, sender, receiver, status_value):
+        request = self.filter(sender=sender, receiver=receiver).first()
+        if request:
+            request.status = status_value
+            request.save()
+            return request
+        return None
+
+
+class BookmarkManager(models.Manager):
+    def toggle(self, user, profile):
+        bookmark, created = self.get_or_create(user=user, profile=profile)
+        if not created:
+            bookmark.delete()
+            return False  # Unbookmarked
+        return True  # Bookmarked
+
+    def get_user_bookmarks(self, user):
+        return self.filter(user=user)

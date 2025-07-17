@@ -1,15 +1,16 @@
 from rest_framework import status
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from .serializers import *
 from django.db import transaction
 from common.utils import get_serializer_error_as_string
 import logging
-from rest_framework.permissions import IsAuthenticated
 from .models import *
 from django.db.models import Q
 from common.utils import paginate_and_filter_queryset
+from common.response_managers import *
+from django.db import transaction
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,20 +20,19 @@ class GetCategoryList(APIView):
     def get(self, request):
         try:
             categories = Category.objects.active()
-            return paginate_and_filter_queryset(
+            return ResponseManager.custom_paginated_response(
                 request,
                 categories,
                 self.serializer_class,
                 search_fields=['name', 'display_name'],
-                ordering_fields=['order', 'name']
+                ordering_fields=['order', 'name'],
+                message=ResponseStatus.CATEGORIES_FETCHED
             )
         except Exception as e:
-            logger.error(f"Error fetching category list: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while fetching categories.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.server_error_response(
+                message="Failed to fetch categories",
+                error=str(e)
+            )
 
 
 class GetSubCategoryList(APIView):
@@ -41,44 +41,48 @@ class GetSubCategoryList(APIView):
     def get(self, request):
         try:
             sub_categories = SubCategory.objects.active()
-            return paginate_and_filter_queryset(
+            return ResponseManager.custom_paginated_response(
                 request,
                 sub_categories,
                 self.serializer_class,
                 search_fields=['name', 'display_name', 'category__name'],
-                ordering_fields=['order', 'name']
+                ordering_fields=['order', 'name'],
+                message=ResponseStatus.SUBCATEGORIES_FETCHED
             )
         except Exception as e:
-            logger.error(f"Error fetching subcategory list: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while fetching subcategories.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.server_error_response(
+                message="Failed to fetch subcategories",
+                error=str(e)
+            )
 
 
 class CreateAdView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AdCreateSerializer
 
+    @transaction.atomic()
     def post(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
-            if serializer.is_valid():
+            if not serializer.is_valid():
+                return ResponseManager.validation_error_response(
+                    message=ResponseStatus.VALIDATION_FAILED,
+                    errors=get_serializer_error_as_string(serializer)
+                )
+
+            with transaction.atomic():
                 serializer.save(user=request.user)
-                return Response({
-                    "status": True,
-                    "message": "Ad created successfully.",
-                    'data': serializer.data
-                }, status=status.HTTP_201_CREATED)
-            return Response({'error': get_serializer_error_as_string(serializer)}, status=status.HTTP_400_BAD_REQUEST)
+
+            return ResponseManager.created_response(
+                message=ResponseStatus.AD_CREATED,
+                data=serializer.data
+            )
         except Exception as e:
-            logger.error(f"Error fetching  error creating ad: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while creating ad.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Ad creation failed")
+            return ResponseManager.server_error_response(
+                message="Failed to create ad",
+                error=str(e)
+            )
 
 
 class ListAdsView(APIView):
@@ -98,22 +102,25 @@ class ListAdsView(APIView):
             if request.user.is_authenticated:
                 query = request.query_params.get('search')
                 if query:
-                    SearchHistory.objects.create(user=request.user, query=query)
+                    try:
+                        SearchHistory.objects.create(user=request.user, query=query)
+                    except Exception as e:
+                        logger.error(f"Failed to save search history: {str(e)}")
 
-            return paginate_and_filter_queryset(
+            return ResponseManager.custom_paginated_response(
                 request,
                 ads,
                 self.serializer_class,
                 search_fields=['title', 'description', 'location'],
-                ordering_fields=['created_at', 'price']
+                ordering_fields=['created_at', 'price'],
+                message=ResponseStatus.ADS_FETCHED
             )
         except Exception as e:
-            logger.error(f"Error while fetching ads: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred fetching ads.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Failed to list ads")
+            return ResponseManager.server_error_response(
+                message="Failed to fetch ads",
+                error=str(e)
+            )
 
 
 class AdDetailView(APIView):
@@ -123,20 +130,19 @@ class AdDetailView(APIView):
     def get(self, request, id):
         try:
             ad = Ad.objects.active().get(id=id)
+            serializer = self.serializer_class(ad)
+            return ResponseManager.success_response(
+                message=ResponseStatus.AD_FETCHED,
+                data=serializer.data
+            )
         except Ad.DoesNotExist:
-            return Response(
-                {"message": "Ad not found or is no longer active."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return ResponseManager.not_found_response(ResponseStatus.AD_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Unexpected error while retrieving ad {id}: {str(e)}")
-            return Response(
-                {"message": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            logger.exception(f"Failed to fetch ad {id}")
+            return ResponseManager.server_error_response(
+                message="Failed to fetch ad details",
+                error=str(e)
             )
-
-        serializer = self.serializer_class(ad)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserAdsView(APIView):
@@ -147,17 +153,16 @@ class UserAdsView(APIView):
         try:
             user_ads = Ad.objects.for_user(request.user).order_recent()
             serializer = self.serializer_class(user_ads, many=True)
-            return Response({
-                "status": True,
-                'user_ads': serializer.data
-            }, status=status.HTTP_200_OK)
+            return ResponseManager.success_response(
+                message=ResponseStatus.USER_ADS_FETCHED,
+                data={"user_ads": serializer.data}
+            )
         except Exception as e:
-            logger.error(f"Error while fetching list of user's ads: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred fetching list of user's ads.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Failed to fetch user ads")
+            return ResponseManager.server_error_response(
+                message="Failed to fetch user ads",
+                error=str(e)
+            )
 
 
 class FavoriteAdsView(APIView):
@@ -168,90 +173,107 @@ class FavoriteAdsView(APIView):
         try:
             favorites = FavoriteAd.objects.for_user(request.user)
             serializer = self.serializer_class(favorites, many=True)
-            return Response({
-                "status": True,
-                "favourites":  serializer.data},
-                status=status.HTTP_200_OK)
+            return ResponseManager.success_response(
+                message=ResponseStatus.FAVORITE_ADS_FETCHED,
+                data={"favourites": serializer.data}
+            )
         except Exception as e:
-            logger.error(f"Error while fetching list of favourite ads: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred fetching list of favourite ads.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Failed to fetch favorite ads")
+            return ResponseManager.server_error_response(
+                message="Failed to fetch favorites",
+                error=str(e)
+            )
 
 
 class AddToFavoriteView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic()
     def post(self, request, ad_id):
         try:
-            ad = Ad.objects.active().get(id=ad_id)  # Use your custom manager if you have one
+            ad = Ad.objects.active().get(id=ad_id)
         except Ad.DoesNotExist:
-            return Response(
-                {"message": "Ad not found or is no longer active."},
-                status=status.HTTP_404_NOT_FOUND
+            return ResponseManager.not_found_response(ResponseStatus.AD_NOT_FOUND)
+        except Exception as e:
+            return ResponseManager.server_error_response(
+                message="Failed to fetch ad",
+                error=str(e)
             )
+
         try:
             favorite, created = FavoriteAd.objects.get_or_create(user=request.user, ad=ad)
             if created:
-                return Response({'message': 'Ad added to favorites.'}, status=status.HTTP_201_CREATED)
-            return Response({'message': 'Already in favorites.'}, status=status.HTTP_200_OK)
+                return ResponseManager.created_response(ResponseStatus.AD_ADDED_TO_FAVORITES)
+            return ResponseManager.success_response(ResponseStatus.AD_ALREADY_IN_FAVORITES)
         except Exception as e:
-            logger.error(f"Error while adding to favorites: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while adding to favorites.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Failed to add favorite")
+            return ResponseManager.server_error_response(
+                message="Failed to add to favorites",
+                error=str(e)
+            )
 
 
 class RemoveFromFavoriteView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic()
     def delete(self, request, ad_id):
         try:
             favorite = FavoriteAd.objects.for_user(request.user).filter(ad__id=ad_id).first()
-            if favorite:
-                favorite.delete()
-                return Response({'message': 'Ad removed from favorites.'}, status=status.HTTP_204_NO_CONTENT)
-            return Response({'error': 'Favorite not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if not favorite:
+                return ResponseManager.not_found_response(ResponseStatus.FAVORITE_NOT_FOUND)
+
+            favorite.delete()
+            return ResponseManager.deleted_response(ResponseStatus.AD_REMOVED_FROM_FAVORITES)
         except Exception as e:
-            logger.error(f"Error while removing from favorites: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while removing from favorites.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Failed to remove favorite")
+            return ResponseManager.server_error_response(
+                message="Failed to remove from favorites",
+                error=str(e)
+            )
 
 
 class FilteredAdListView(APIView):
     serializer_class = AdListSerializer
     permission_classes = [AllowAny]
 
-    def get_queryset(self):
-        queryset = Ad.objects.active().order_recent()
+    def get(self, request):
+        try:
+            queryset = Ad.objects.active().order_recent()
 
-        # Search
-        search = self.request.query_params.get('search')
-        if search:
-            queryset = queryset.filter(
-                Q(title__icontains=search) |
-                Q(description__icontains=search) |
-                Q(location__icontains=search)
+            # Apply filters
+            search = request.query_params.get('search')
+            if search:
+                queryset = queryset.filter(
+                    Q(title__icontains=search) |
+                    Q(description__icontains=search) |
+                    Q(location__icontains=search)
+                )
+
+            # Apply sorting
+            sort_by = request.query_params.get('sort_by')
+            if sort_by in ['price', '-price', 'created_at', '-created_at']:
+                queryset = queryset.order_by(sort_by)
+
+            # Filter by location
+            location = request.query_params.get('location')
+            if location:
+                queryset = queryset.filter(location__icontains=location)
+
+            return ResponseManager.custom_paginated_response(
+                request,
+                queryset,
+                self.serializer_class,
+                search_fields=['title', 'description', 'location'],
+                ordering_fields=['created_at', 'price'],
+                message=ResponseStatus.ADS_FETCHED
             )
-
-        # Sort by
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by in ['price', '-price', 'created_at', '-created_at']:
-            queryset = queryset.order_by(sort_by)
-
-        # Filter by location
-        location = self.request.query_params.get('location')
-        if location:
-            queryset = queryset.filter(location__icontains=location)
-
-        return queryset
+        except Exception as e:
+            logger.exception("Failed to filter ads")
+            return ResponseManager.server_error_response(
+                message="Failed to filter ads",
+                error=str(e)
+            )
 
 
 class UserSearchHistoryView(APIView):
@@ -259,13 +281,15 @@ class UserSearchHistoryView(APIView):
 
     def get(self, request):
         try:
-            history = SearchHistory.objects.filter(user=request.user)
+            history = SearchHistory.objects.filter(user=request.user).order_by('-searched_at')
             data = [{"query": h.query, "searched_at": h.searched_at} for h in history]
-            return Response({"status": True, "history": data}, status=status.HTTP_200_OK)
+            return ResponseManager.success_response(
+                message=ResponseStatus.SEARCH_HISTORY_FETCHED,
+                data={"history": data}
+            )
         except Exception as e:
-            logger.error(f"Error fetching search history: {e}")
-            return Response({
-                "status": False,
-                "message": "Failed to fetch search history",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Failed to fetch search history")
+            return ResponseManager.server_error_response(
+                message="Failed to fetch search history",
+                error=str(e)
+            )

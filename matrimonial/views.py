@@ -1,10 +1,7 @@
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from .models import *
 from .serializers import *
-from rest_framework.pagination import PageNumberPagination
+from common.response_managers import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,25 +15,16 @@ class GetProfileView(APIView):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
             if not profile:
-                return Response({
-                    "status": False,
-                    "message": "User profile not found"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
 
             serializer = self.serializer_class(profile)
-            return Response({
-                "status": True,
-                "message": "User profile fetched successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            return ResponseManager.success_response(
+                message=ResponseStatus.PROFILE_FETCHED,
+                data=serializer.data
+            )
 
         except Exception as e:
-            logger.error(f"Error fetching user's profile: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while fetching user's profile.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "fetching user profile")
 
 
 class CreateProfileView(APIView):
@@ -48,22 +36,15 @@ class CreateProfileView(APIView):
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 serializer.save(user=request.user)
-                return Response({
-                    "status": True,
-                    "message": "User profile created successfully",
-                    "data": serializer.data
-                    }, status=status.HTTP_201_CREATED)
-            return Response({
-                "status": False,
-                "message": "An error occurred"
-            }, status=status.HTTP_400_BAD_REQUEST)
+                return ResponseManager.created_response(
+                    message=ResponseStatus.PROFILE_CREATED,
+                    data=serializer.data
+                )
+            return ResponseManager.validation_error_response(
+                errors=serializer.errors
+            )
         except Exception as e:
-            logger.error(f"Error creating user's profile: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while creating user's profile.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "creating user profile")
 
 
 class UpdateProfileView(APIView):
@@ -74,29 +55,20 @@ class UpdateProfileView(APIView):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
             if not profile:
-                return Response({
-                    "status": False,
-                    "message": "User profile not found"
-                }, status=status.HTTP_404_NOT_FOUND)
-            serializer = self.serializer_class(data=request.data, partial=True)
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
+
+            serializer = self.serializer_class(profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response({
-                    "status": True,
-                    "message": "User profile updated successfully",
-                    "data": serializer.data
-                }, status=status.HTTP_200_OK)
-            return Response({
-                "status": False,
-                "message": "An error occurred"
-            }, status=status.HTTP_400_BAD_REQUEST)
+                return ResponseManager.success_response(
+                    message=ResponseStatus.PROFILE_UPDATED,
+                    data=serializer.data
+                )
+            return ResponseManager.validation_error_response(
+                errors=serializer.errors
+            )
         except Exception as e:
-            logger.error(f"Error updating user's profile: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while updating user's profile.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "updating user profile")
 
 
 class DeleteProfileView(APIView):
@@ -105,23 +77,13 @@ class DeleteProfileView(APIView):
     def delete(self, request):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
-            if profile:
-                profile.delete()
-                return Response({
-                    "status": True,
-                    "message": "User profile deleted successfully",
-                }, status=status.HTTP_204_NO_CONTENT)
-            return Response({
-                "status": False,
-                "message": "User profile not found"
-            }, status=status.HTTP_404_NOT_FOUND)
+            if not profile:
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
+
+            profile.delete()
+            return ResponseManager.deleted_response(ResponseStatus.PROFILE_DELETED)
         except Exception as e:
-            logger.error(f"Error deleting user's profile: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while deleting user's profile.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "deleting user profile")
 
 
 class MatrimonyProfileListView(APIView):
@@ -133,22 +95,15 @@ class MatrimonyProfileListView(APIView):
             filters = request.query_params
             queryset = MatrimonyProfile.objects.list_profiles(filters)
 
-            paginator = PageNumberPagination()
-            paginator.page_size = 10
-            result_page = paginator.paginate_queryset(queryset, request)
-            serializer = self.serializer_class(result_page, many=True)
-
-            return paginator.get_paginated_response({
-                "status": True,
-                "message": "Profiles fetched successfully",
-                "data": serializer.data
-            })
+            return ResponseManager.paginated_response(
+                queryset=queryset,
+                request=request,
+                serializer_class=self.serializer_class,
+                message=ResponseStatus.PROFILES_FETCHED,
+                page_size=10
+            )
         except Exception as e:
-            return Response({
-                "status": False,
-                "message": "Error occurred while listing profiles.",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "listing profiles")
 
 
 class MatrimonyProfileDetailView(APIView):
@@ -158,24 +113,15 @@ class MatrimonyProfileDetailView(APIView):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(user_id)
             if not profile:
-                return Response({
-                    "status": False,
-                    "message": "Profile not found"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
 
             serializer = MatrimonyProfileSerializer(profile)
-            return Response({
-                "status": True,
-                "message": "Profile fetched successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-
+            return ResponseManager.success_response(
+                message=ResponseStatus.PROFILE_FETCHED,
+                data=serializer.data
+            )
         except Exception as e:
-            return Response({
-                "status": False,
-                "message": "An error occurred while fetching profile",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "fetching profile details")
 
 
 class MatrimonyProfilePicturesView(APIView):
@@ -186,25 +132,16 @@ class MatrimonyProfilePicturesView(APIView):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(user_id)
             if not profile:
-                return Response({
-                    "status": False,
-                    "message": "Profile not found"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
 
             pictures = profile.pictures.all()
             serializer = self.serializer_class(pictures, many=True)
-            return Response({
-                "status": True,
-                "message": "Pictures fetched successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-
+            return ResponseManager.success_response(
+                message=ResponseStatus.PICTURES_FETCHED,
+                data=serializer.data
+            )
         except Exception as e:
-            return Response({
-                "status": False,
-                "message": "An error occurred while fetching pictures",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "fetching profile pictures")
 
 
 class UploadProfilePictureView(APIView):
@@ -215,32 +152,22 @@ class UploadProfilePictureView(APIView):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
             if not profile:
-                return Response({
-                    "status": False,
-                    "message": "User profile not found"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
 
             image = request.FILES.get('image')
             if not image:
-                return Response({
-                    "status": False,
-                    "message": "Image is required"
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return ResponseManager.validation_error_response(
+                    message=ResponseStatus.IMAGE_REQUIRED
+                )
 
             picture = profile.pictures.create(image=image)
             serializer = self.serializer_class(picture)
-            return Response({
-                "status": True,
-                "message": "Picture uploaded successfully",
-                "data": serializer.data
-            }, status=status.HTTP_201_CREATED)
-
+            return ResponseManager.created_response(
+                message=ResponseStatus.PICTURE_UPLOADED,
+                data=serializer.data
+            )
         except Exception as e:
-            return Response({
-                "status": False,
-                "message": "An error occurred while uploading picture",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "uploading profile picture")
 
 
 class DeleteProfilePictureView(APIView):
@@ -254,23 +181,12 @@ class DeleteProfilePictureView(APIView):
             ).first()
 
             if not picture:
-                return Response({
-                    "status": False,
-                    "message": "Picture not found or unauthorized"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PICTURE_NOT_FOUND)
 
             picture.delete()
-            return Response({
-                "status": True,
-                "message": "Picture deleted successfully"
-            }, status=status.HTTP_204_NO_CONTENT)
-
+            return ResponseManager.deleted_response(ResponseStatus.PICTURE_DELETED)
         except Exception as e:
-            return Response({
-                "status": False,
-                "message": "An error occurred while deleting picture",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "deleting profile picture")
 
 
 class GetPreferenceView(APIView):
@@ -281,25 +197,15 @@ class GetPreferenceView(APIView):
         try:
             preference = PartnerPreference.objects.get_for_user(request.user)
             if not preference:
-                return Response({
-                    "status": False,
-                    "message": "Partner preferences not set yet"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PREFERENCES_NOT_SET)
 
             serializer = self.serializer_class(preference)
-            return Response({
-                "status": True,
-                "message": "Partner preferences fetched successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-
+            return ResponseManager.success_response(
+                message=ResponseStatus.PREFERENCES_FETCHED,
+                data=serializer.data
+            )
         except Exception as e:
-            logger.error(f"Error fetching partner preferences: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while fetching preferences",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "fetching partner preferences")
 
 
 class SetPreferenceView(APIView):
@@ -309,33 +215,22 @@ class SetPreferenceView(APIView):
     def post(self, request):
         try:
             if PartnerPreference.objects.get_for_user(request.user):
-                return Response({
-                    "status": False,
-                    "message": "Preferences already exist. Use update instead"
-                }, status=status.HTTP_400_BAD_REQUEST)
+                return ResponseManager.validation_error_response(
+                    message=ResponseStatus.PREFERENCES_EXIST
+                )
 
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 serializer.save(user=request.user)
-                return Response({
-                    "status": True,
-                    "message": "Partner preferences created successfully",
-                    "data": serializer.data
-                }, status=status.HTTP_201_CREATED)
-
-            return Response({
-                "status": False,
-                "message": "Validation failed",
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-
+                return ResponseManager.created_response(
+                    message=ResponseStatus.PREFERENCES_CREATED,
+                    data=serializer.data
+                )
+            return ResponseManager.validation_error_response(
+                errors=serializer.errors
+            )
         except Exception as e:
-            logger.error(f"Error creating partner preferences: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while creating preferences",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "creating partner preferences")
 
 
 class UpdatePreferenceView(APIView):
@@ -346,30 +241,168 @@ class UpdatePreferenceView(APIView):
         try:
             preference = PartnerPreference.objects.get_for_user(request.user)
             if not preference:
-                return Response({
-                    "status": False,
-                    "message": "Preferences not found. Use create instead"
-                }, status=status.HTTP_404_NOT_FOUND)
+                return ResponseManager.not_found_response(ResponseStatus.PREFERENCES_NOT_FOUND)
 
             serializer = self.serializer_class(preference, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response({
-                    "status": True,
-                    "message": "Partner preferences updated successfully",
-                    "data": serializer.data
-                }, status=status.HTTP_200_OK)
-
-            return Response({
-                "status": False,
-                "message": "Validation failed",
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-
+                return ResponseManager.success_response(
+                    message=ResponseStatus.PREFERENCES_UPDATED,
+                    data=serializer.data
+                )
+            return ResponseManager.validation_error_response(
+                errors=serializer.errors
+            )
         except Exception as e:
-            logger.error(f"Error updating partner preferences: {e}")
-            return Response({
-                "status": False,
-                "message": "An error occurred while updating preferences",
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return ResponseManager.handle_exception(e, "updating partner preferences")
+
+
+class SendConnectionView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SendConnectionRequestSerializer
+
+    def post(self, request):
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if not serializer.is_valid():
+                return ResponseManager.validation_error_response(
+                    errors=serializer.errors
+                )
+
+            receiver_id = serializer.validated_data['receiver_id']
+            message = serializer.validated_data.get('message', '')
+
+            receiver = User.objects.filter(id=receiver_id).first()
+            if not receiver:
+                return ResponseManager.not_found_response(ResponseStatus.USER_NOT_FOUND)
+
+            try:
+                connection, created = ConnectionRequest.objects.send(
+                    request.user, receiver, message
+                )
+                status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+                return ResponseManager.success_response(
+                    message=ResponseStatus.CONNECTION_SENT,
+                    data=ConnectionRequestSerializer(connection).data,
+                    status_code=status_code
+                )
+            except ValueError as e:
+                return ResponseManager.validation_error_response(
+                    message=str(e)
+                )
+        except Exception as e:
+            return ResponseManager.handle_exception(e, "sending connection request")
+
+
+class ReceivedConnectionView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ConnectionRequestSerializer
+
+    def get(self, request):
+        try:
+            connections = ConnectionRequest.objects.get_received(request.user)
+            if not connections:
+                return ResponseManager.not_found_response(ResponseStatus.NO_RECEIVED_CONNECTIONS)
+
+            serializer = self.serializer_class(connections, many=True)
+            return ResponseManager.success_response(
+                message=ResponseStatus.CONNECTIONS_FETCHED,
+                data=serializer.data
+            )
+        except Exception as e:
+            return ResponseManager.handle_exception(e, "fetching received connections")
+
+
+class SentConnectionViews(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ConnectionRequestSerializer
+
+    def get(self, request):
+        try:
+            connections = ConnectionRequest.objects.get_sent(request.user)
+            if not connections:
+                return ResponseManager.not_found_response(ResponseStatus.NO_SENT_CONNECTIONS)
+
+            serializer = self.serializer_class(connections, many=True)
+            return ResponseManager.success_response(
+                message=ResponseStatus.CONNECTIONS_FETCHED,
+                data=serializer.data
+            )
+        except Exception as e:
+            return ResponseManager.handle_exception(e, "fetching sent connections")
+
+
+class RespondConnectionsView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = RespondConnectionRequestSerializer
+
+    def post(self, request):
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if not serializer.is_valid():
+                return ResponseManager.validation_error_response(
+                    errors=serializer.errors
+                )
+
+            sender_id = serializer.validated_data['sender_id']
+            status_value = serializer.validated_data['status']
+
+            sender = User.objects.filter(id=sender_id).first()
+            if not sender:
+                return ResponseManager.not_found_response(ResponseStatus.USER_NOT_FOUND)
+
+            connection = ConnectionRequest.objects.respond(sender, request.user, status_value)
+            if not connection:
+                return ResponseManager.not_found_response(ResponseStatus.CONNECTION_NOT_FOUND)
+
+            return ResponseManager.success_response(
+                message=ResponseStatus.CONNECTION_RESPONDED,
+                data=ConnectionRequestSerializer(connection).data
+            )
+        except Exception as e:
+            return ResponseManager.handle_exception(e, "responding to connection request")
+
+
+class BookmarkToggleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            profile_id = request.data.get('profile_id')
+            if not profile_id:
+                return ResponseManager.validation_error_response(
+                    message="Profile ID is required"
+                )
+
+            try:
+                profile = MatrimonyProfile.objects.get(id=profile_id)
+            except MatrimonyProfile.DoesNotExist:
+                return ResponseManager.not_found_response(ResponseStatus.PROFILE_NOT_FOUND)
+
+            bookmarked = Bookmark.objects.toggle(request.user, profile)
+            return ResponseManager.success_response(
+                message=ResponseStatus.BOOKMARK_TOGGLED,
+                data={"bookmarked": bookmarked}
+            )
+        except Exception as e:
+            return ResponseManager.handle_exception(e, "toggling bookmark")
+
+
+class BookmarkListView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = BookmarkSerializer
+
+    def get(self, request):
+        try:
+            bookmarks = Bookmark.objects.get_user_bookmarks(request.user)
+            if not bookmarks:
+                return ResponseManager.not_found_response(ResponseStatus.BOOKMARK_LIST_NOT_FOUND)
+
+            serializer = self.serializer_class(bookmarks, many=True)
+            return ResponseManager.success_response(
+                message=ResponseStatus.BOOKMARKS_FETCHED,
+                data=serializer.data
+            )
+        except Exception as e:
+            return ResponseManager.handle_exception(e, "fetching bookmarks")
+

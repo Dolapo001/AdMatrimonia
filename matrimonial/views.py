@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import *
@@ -31,6 +32,7 @@ class CreateProfileView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = MatrimonyProfileSerializer
 
+    @transaction.atomic()
     def post(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
@@ -51,6 +53,7 @@ class UpdateProfileView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = MatrimonyProfileSerializer
 
+    @transaction.atomic()
     def put(self, request):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
@@ -148,6 +151,7 @@ class UploadProfilePictureView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = MatrimonyProfilePictureSerializer
 
+    @transaction.atomic()
     def post(self, request):
         try:
             profile = MatrimonyProfile.objects.get_by_user_id(request.user.id)
@@ -212,6 +216,7 @@ class SetPreferenceView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerPreferenceSerializer
 
+    @transaction.atomic()
     def post(self, request):
         try:
             if PartnerPreference.objects.get_for_user(request.user):
@@ -237,6 +242,7 @@ class UpdatePreferenceView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerPreferenceSerializer
 
+    @transaction.atomic()
     def put(self, request):
         try:
             preference = PartnerPreference.objects.get_for_user(request.user)
@@ -261,6 +267,7 @@ class SendConnectionView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = SendConnectionRequestSerializer
 
+    @transaction.atomic()
     def post(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
@@ -336,6 +343,7 @@ class RespondConnectionsView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = RespondConnectionRequestSerializer
 
+    @transaction.atomic()
     def post(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
@@ -366,6 +374,7 @@ class RespondConnectionsView(APIView):
 class BookmarkToggleView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic()
     def post(self, request):
         try:
             profile_id = request.data.get('profile_id')

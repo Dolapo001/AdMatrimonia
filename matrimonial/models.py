@@ -1,7 +1,7 @@
 from django.db import models
 from common.models import BaseModel
 from core.models import User
-from matrimonial.managers import MatrimonyProfileManager, PartnerPreferenceManager
+from matrimonial.managers import *
 
 gender_choice = [
     ('female', 'Female'),
@@ -64,6 +64,7 @@ class ConnectionRequest(BaseModel):
     )
     message = models.TextField(null=True, blank=True)
     is_bookmarked = models.BooleanField(default=False)
+    objects = ConnectionRequestManager()
 
     class Meta:
         unique_together = ('sender', 'receiver')
@@ -75,6 +76,7 @@ class ConnectionRequest(BaseModel):
 class Bookmark(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
     profile = models.ForeignKey(MatrimonyProfile, on_delete=models.CASCADE, related_name='bookmarked_by')
+    objects = BookmarkManager()
 
 
 #i have been busy with flutter i almost forgot

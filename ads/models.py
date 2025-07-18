@@ -7,7 +7,7 @@ from common.models import BaseModel
 from core.models import User
 from .constants import *
 from .query_managers import *
-from .utils import generate_unique_public_id
+from .utils import generate_unique_publik_id
 
 
 class Category(BaseModel):
@@ -56,10 +56,10 @@ class Ad(BaseModel):
     contact_phone = models.CharField(max_length=20, blank=True)
     contact_email = models.EmailField(blank=True)
     images = models.JSONField(default=list, blank=True)  # Store image URLs
-    status = models.CharField(max_length=20, choices=Ad_Status, default='pending')
+    status = models.CharField(max_length=20, choices=Ad_Status, default='active')
     is_featured = models.BooleanField(default=False)
-    is_sold = models.BooleanField(default=False),
-    is_expired = models.BooleanField(default=False),
+    is_sold = models.BooleanField(default=False)
+    is_expired = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
@@ -91,7 +91,7 @@ class Ad(BaseModel):
                 category_slug = self.category.slug
             else:
                 category_slug = slugify(str(self.category))
-            self.publik_id = generate_unique_public_id(category_slug)
+            self.publik_id = generate_unique_publik_id(category_slug)
 
         # Default expire in 30 days if not provided
         if not self.expires_at:

@@ -36,7 +36,8 @@ class AdCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ad
         fields = ['subcategory', 'title', 'description', 'category', 'price', 'currency', 'location', 'contact_phone',
-                  'contact_email', 'images']
+                  'contact_email', 'images', 'publik_id']
+        read_only_fields = ['publik_id']
 
 
 class AdDetailSerializer(serializers.ModelSerializer):
@@ -50,7 +51,8 @@ class AdDetailSerializer(serializers.ModelSerializer):
 class AdListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ad
-        fields = ['id', 'title', 'location', 'price', 'currency', 'created_at', 'is_featured']
+        fields = ['id', 'title', 'location', 'price', 'currency', 'created_at', 'is_featured', 'publik_id',
+                  'expires_at']
 
 
 class UserAdListSerializer(serializers.ModelSerializer):

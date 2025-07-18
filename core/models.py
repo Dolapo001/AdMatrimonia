@@ -30,7 +30,7 @@ class User(AbstractUser, BaseModel):
 
 class OTP(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otp')
-    code = models.PositiveIntegerField(null=True, max_length=4)
+    code = models.PositiveIntegerField(null=True)
     verified = models.BooleanField(default=False)
     expired = models.BooleanField(default=False)
     expiry_date = models.DateTimeField(null=True, auto_now_add=True, editable=False)

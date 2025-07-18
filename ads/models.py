@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.db import models
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
+import uuid
 from common.models import BaseModel
 from core.models import User
 from .constants import *
@@ -56,7 +57,7 @@ class Ad(BaseModel):
     contact_phone = models.CharField(max_length=20, blank=True)
     contact_email = models.EmailField(blank=True)
     images = models.JSONField(default=list, blank=True)  # Store image URLs
-    status = models.CharField(max_length=20, choices=Ad_Status, default='active')
+    status = models.CharField(max_length=20, choices=Ad_Status, default='pending')
     is_featured = models.BooleanField(default=False)
     is_sold = models.BooleanField(default=False)
     is_expired = models.BooleanField(default=False)
@@ -65,7 +66,7 @@ class Ad(BaseModel):
     expires_at = models.DateTimeField(null=True, blank=True)
     publik_id = models.CharField(max_length=20, unique=True, blank=True)
     objects = AdManager()
-
+    pending_since = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -97,11 +98,13 @@ class Ad(BaseModel):
         if not self.expires_at:
             self.expires_at = timezone.now() + timedelta(days=30)
 
-        self.full_clean()
+        if self.status == 'pending' and not self.pending_since:
+            self.pending_since = timezone.now()
+            self.full_clean()
         super().save(*args, **kwargs)
 
 
-class FavoriteAd(models.Model):
+class FavoriteAd(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorite_ads')
     ad = models.ForeignKey(Ad, on_delete=models.CASCADE, related_name='favorited_by')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -111,7 +114,18 @@ class FavoriteAd(models.Model):
         unique_together = ['user', 'ad']
 
     def __str__(self):
-        return f"{self.user.username} - {self.ad.title}"
+        return f"{self.user.name} - {self.ad.title}"
+
+    def clean(self):
+        try:
+            uuid.UUID(str(self.ad_id))
+            uuid.UUID(str(self.user_id))
+        except ValueError:
+            raise ValidationError("Invalid UUID format")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class SearchHistory(BaseModel):

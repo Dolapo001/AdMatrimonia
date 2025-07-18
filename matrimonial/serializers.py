@@ -11,23 +11,23 @@ class MatrimonyProfilePictureSerializer(serializers.ModelSerializer):
 class MatrimonyProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = MatrimonyProfile
-        exclude = ('created_at', 'updated_at')
+        exclude = ('created_at', )
 
 
-class MatrimonyProfileDetailSerializer(serializers.ModelSerializer):
-    pictures = MatrimonyProfilePictureSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = MatrimonyProfile
-        fields = (
-            'id',
-            'pictures',
-            'height',
-            'expectations',
-            'education',
-            'address',
-            'profession'
-        )
+# class MatrimonyProfileDetailSerializer(serializers.ModelSerializer):
+#     pictures = MatrimonyProfilePictureSerializer(many=True, read_only=True)
+#
+#     class Meta:
+#         model = MatrimonyProfile
+#         fields = (
+#             'id',
+#             'pictures',
+#             'height',
+#             'expectations',
+#             'education',
+#             'address',
+#             'profession'
+#         )
 
 
 class PartnerPreferenceSerializer(serializers.ModelSerializer):

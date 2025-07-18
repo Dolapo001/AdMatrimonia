@@ -8,18 +8,28 @@ class RegisterUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['name', 'email', 'phone_number', 'password']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
-        def validate_email(self, value):
-            if not value:
-                raise serializers.ValidationError("Email is required")
-            return value
+    def validate_email(self, value):
+        if not value:
+            raise serializers.ValidationError("Email is required")
+        return value
 
-        def create(self, validated_data):
-            # Create the user with proper password handling using the custom manager
-            user = User.objects.create_user(
-                email=validated_data["email"], password=validated_data["password"]
-            )
-            return user
+    def create(self, validated_data):
+        import uuid
+
+        validated_data["username"] = str(uuid.uuid4())[:30]  # ✨ random dummy username
+
+        user = User.objects.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"],
+            username=validated_data["username"],
+            phone_number=validated_data.get("phone_number"),
+            name=validated_data.get("name")
+        )
+        return user
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -31,20 +41,22 @@ class UserLoginSerializer(serializers.Serializer):
         password = data.get("password")
 
         if not email or not password:
-            raise serializers.ValidationError(_("Both email and password are required"))
+            raise serializers.ValidationError("Both email and password are required")
 
         user = authenticate(
             request=self.context.get("request"),
-            email=email,  # <- this is what Django expects
+            username=email,
             password=password
         )
 
         if not user:
-            raise serializers.ValidationError({"email": _("Invalid credentials")})
+            raise serializers.ValidationError({"email": "Invalid credentials"})
 
         if not user.is_active:
-            raise serializers.ValidationError(_("User account is disabled"))
+            raise serializers.ValidationError("User account is disabled")
 
         data["user"] = user
         return data
+
+
 

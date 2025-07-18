@@ -19,7 +19,7 @@ class RegistrationView(APIView):
     serializer_class = RegisterUserSerializer
     permission_classes = [AllowAny]
 
-    @transaction.atomic
+    @transaction.atomic()
     def post(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
@@ -77,5 +77,3 @@ class LoginView(APIView):
                 {"message": "Internal Server Error", "data": None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        # uh hi i am sick cant do much but i still have to commit and push
-        # still sick

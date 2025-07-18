@@ -9,6 +9,7 @@ from .managers import CustomUserManager
 
 class User(AbstractUser, BaseModel):
     name = models.CharField(null=True, max_length=225)
+    username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     email = models.EmailField(unique=True, validators=[validate_email_format], null=True)
     country = models.CharField(max_length=20, null=True)
     phone_number = models.CharField(unique=True, null=True, max_length=15, validators=[validate_phone_number])

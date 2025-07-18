@@ -24,6 +24,7 @@ class MatrimonyProfile(BaseModel):
     expectations = models.CharField(max_length=250, null=True, blank=True),
     objects = MatrimonyProfileManager()
     is_bookmarked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.name} Matrimony Profile"

@@ -57,7 +57,7 @@ class Ad(BaseModel):
     contact_phone = models.CharField(max_length=20, blank=True)
     contact_email = models.EmailField(blank=True)
     images = models.JSONField(default=list, blank=True)  # Store image URLs
-    status = models.CharField(max_length=20, choices=Ad_Status, default='pending')
+    status = models.CharField(max_length=20, choices=Ad_Status, default='active')
     is_featured = models.BooleanField(default=False)
     is_sold = models.BooleanField(default=False)
     is_expired = models.BooleanField(default=False)

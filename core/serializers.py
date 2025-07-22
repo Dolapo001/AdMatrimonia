@@ -2,6 +2,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from .models import User
+from .emails import *
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
@@ -58,5 +59,45 @@ class UserLoginSerializer(serializers.Serializer):
         data["user"] = user
         return data
 
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    identifier = serializers.EmailField()
+
+    def validate(self, data):
+        identifier = data.get("identifier")
+        user = User.objects.filter(email=identifier).first()
+        if not user:
+            raise serializers.ValidationError(_("User not found"))
+        data["user"] = user
+        return data
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    identifier = serializers.EmailField()  # Use EmailField for validation
+    code = serializers.CharField(max_length=4)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError(_("Passwords do not match"))
+
+        # Query only by email since phone verification is not supported.
+        user = User.objects.filter(email=data["identifier"]).first()
+        if not user:
+            raise serializers.ValidationError(_("User not found"))
+
+        # Verify OTP using the provided code
+        if not verify_otp(user, data["code"]):
+            raise serializers.ValidationError(_("Invalid OTP or OTP has expired"))
+
+        data["user"] = user
+        return data
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.set_password(self.validated_data["new_password"])
+        user.save()
+        return user
 
 

@@ -77,3 +77,75 @@ class LoginView(APIView):
                 {"message": "Internal Server Error", "data": None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class ResetPasswordView(APIView):
+    serializer_class = ResetPasswordSerializer
+    permission_classes = [AllowAny]
+
+    @transaction.atomic
+    def post(self, request):
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "Password reset successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            return Response(
+                {
+                    "message": get_serializer_error_as_string(serializer.errors),
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except serializers.ValidationError as e:
+            logger.warning(f"Validation error during password reset: {e}")
+            return Response(
+                {"message": str(e), "data": None},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except User.DoesNotExist as e:
+            logger.error(f"User not found during password reset: {e}")
+            return Response(
+                {"message": "User not found", "data": None},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.error(f"Error occurred during password reset: {e}")
+            return Response(
+                {"message": "Internal Server Error", "data": None},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ForgotPasswordView(APIView):
+    serializer_class = ForgotPasswordSerializer
+    permission_classes = [AllowAny]
+
+    @transaction.atomic()
+    def post(self, request):
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                # Retrieve the user from validated_data
+                user = serializer.validated_data["user"]
+#                send_password_reset_otp(user)
+
+                return Response(
+                    {"message": "Password reset email sent"}, status=status.HTTP_200_OK
+                )
+            return Response(
+                {
+                    "message": get_serializer_error_as_string(serializer.errors),
+                    "data": None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.error(f"Error occurred: {e}")
+            return Response(
+                {"message": "Internal Server Error", "data": None},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

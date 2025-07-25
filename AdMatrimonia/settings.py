@@ -51,6 +51,7 @@ LOCAL_APPS = [
     'ads.apps.AdsConfig',
     'common.apps.CommonConfig',
     'matrimonial.apps.MatrimonialConfig',
+    'chat.apps.ChatConfig',
 ]
 
 THIRD_PARTY_APPS = [
@@ -61,10 +62,23 @@ THIRD_PARTY_APPS = [
     'mailer',
     'django_celery_beat',
     'celery',
+    'channels',
 
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
+
+# Channels Configuration
+ASGI_APPLICATION = 'AdMatrimonia.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

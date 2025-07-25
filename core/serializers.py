@@ -88,11 +88,11 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(_("User not found"))
 
         # Verify OTP using the provided code
-        if not verify_otp(user, data["code"]):
-            raise serializers.ValidationError(_("Invalid OTP or OTP has expired"))
-
-        data["user"] = user
-        return data
+        # if not verify_otp(user, data["code"]):
+        #     raise serializers.ValidationError(_("Invalid OTP or OTP has expired"))
+        #
+        # data["user"] = user
+        # return data
 
     def save(self):
         user = self.validated_data["user"]

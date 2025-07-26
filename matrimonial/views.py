@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import *
 from common.response_managers import *
 import logging
+from chat.utils import send_connection_request_notification, send_connection_accepted_notification
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +288,11 @@ class SendConnectionView(APIView):
                 connection, created = ConnectionRequest.objects.send(
                     request.user, receiver, message
                 )
+                
+                # Send real-time notification if connection request was created
+                if created:
+                    send_connection_request_notification(request.user, receiver)
+                
                 status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
                 return ResponseManager.success_response(
                     message=ResponseStatus.CONNECTION_SENT,
@@ -362,6 +368,10 @@ class RespondConnectionsView(APIView):
             connection = ConnectionRequest.objects.respond(sender, request.user, status_value)
             if not connection:
                 return ResponseManager.not_found_response(ResponseStatus.CONNECTION_NOT_FOUND)
+
+            # Send notification if connection was accepted
+            if status_value == 'accepted':
+                send_connection_accepted_notification(request.user, sender)
 
             return ResponseManager.success_response(
                 message=ResponseStatus.CONNECTION_RESPONDED,
